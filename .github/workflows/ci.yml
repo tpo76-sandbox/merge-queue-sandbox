@@ -1,0 +1,40 @@
+name: ci
+
+on:
+  pull_request:
+    branches: [develop, "dev-*"]
+  merge_group:
+    types: [checks_requested]
+
+jobs:
+  fast:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Fast lane
+        run: |
+          sleep 20
+          if [ -f fail-fast.flag ]; then echo "fail-fast.flag present"; exit 1; fi
+
+  full:
+    if: github.event_name == 'merge_group'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Full suite
+        run: |
+          echo "merge group ref: ${{ github.event.merge_group.head_ref }}"
+          sleep 90
+          if [ -f fail-full.flag ]; then echo "fail-full.flag present"; exit 1; fi
+
+  check-status:
+    if: always()
+    needs: [fast, full]
+    runs-on: ubuntu-latest
+    steps:
+      - name: Aggregate
+        run: |
+          echo "fast=${{ needs.fast.result }} full=${{ needs.full.result }}"
+          case "${{ needs.fast.result }}${{ needs.full.result }}" in
+            *failure*|*cancelled*) exit 1 ;;
+          esac
