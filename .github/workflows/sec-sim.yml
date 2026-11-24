@@ -1,0 +1,20 @@
+name: secrets-scan
+
+on:
+  pull_request:
+  merge_group:
+    types: [checks_requested]
+
+jobs:
+  secret-scan:
+    name: Run Gitleaks
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Scan
+        run: |
+          if [ "${{ github.event_name }}" = merge_group ]; then
+            echo "merge_group: content already scanned on the pull request, nothing to do"; exit 0
+          fi
+          if [ -f sec-fail.flag ]; then echo "simulated leak"; exit 1; fi
+          echo "no leak"
