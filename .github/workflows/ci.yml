@@ -26,6 +26,9 @@ jobs:
           echo "merge group ref: ${{ github.event.merge_group.head_ref }}"
           sleep 90
           if [ -f fail-full.flag ]; then echo "fail-full.flag present"; exit 1; fi
+          if [ -f flaky.flag ] && echo "${{ github.event.merge_group.head_ref }}" | grep -q "/pr-$(cat flaky.flag)-"; then
+            echo "simulated flaky failure on the merge group of PR #$(cat flaky.flag) only"; exit 1
+          fi
 
   check-status:
     if: always()
