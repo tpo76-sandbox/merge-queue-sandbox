@@ -1,0 +1,46 @@
+name: labels
+
+on:
+  pull_request:
+  merge_group:
+    types: [checks_requested]
+
+permissions:
+  contents: read
+  pull-requests: read
+
+jobs:
+  labels:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Labels as get-environment.yml reads them (pull_request only)
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          if [ "${{ github.event_name }}" = pull_request ]; then
+            gh api repos/${{ github.repository }}/issues/${{ github.event.pull_request.number }}/labels -q '[.[].name]'
+          else
+            echo "[] (event ${{ github.event_name }}: centreon logic returns no label)"
+          fi
+      - name: PRs of the merge group and their labels
+        if: github.event_name == 'merge_group'
+        env:
+          GH_TOKEN: ${{ github.token }}
+          HEAD_REF: ${{ github.event.merge_group.head_ref }}
+          BASE_SHA: ${{ github.event.merge_group.base_sha }}
+          HEAD_SHA: ${{ github.event.merge_group.head_sha }}
+        run: |
+          echo "head_ref=$HEAD_REF"
+          echo "from head_ref: PR #$(echo "$HEAD_REF" | sed -E 's#.*/pr-([0-9]+)-.*#\1#')"
+          echo "commits base..head:"; git log --format='  %h %s' "$BASE_SHA..$HEAD_SHA"
+          prs=$(git log --format=%s "$BASE_SHA..$HEAD_SHA" | grep -oE '\(#[0-9]+\)$' | tr -dc '0-9\n')
+          echo "from commit subjects: $(echo $prs)"
+          all=""
+          for n in $prs; do
+            l=$(gh api repos/${{ github.repository }}/issues/$n/labels -q '[.[].name]|join(",")')
+            echo "  #$n labels=[$l]"; all="$all,$l"
+          done
+          echo "union=[$(echo "$all" | tr ',' '\n' | sed '/^$/d' | sort -u | paste -sd,)]"
