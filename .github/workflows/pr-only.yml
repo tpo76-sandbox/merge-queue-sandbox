@@ -1,0 +1,9 @@
+name: pr-only
+on:
+  pull_request:
+    branches: [develop]
+jobs:
+  pr-only:
+    runs-on: ubuntu-latest
+    steps:
+      - run: echo "only on pull_request, never on merge_group"
